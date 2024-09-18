@@ -1,0 +1,206 @@
+---
+interface Props {
+	type: "regiter" | "login";
+}
+
+const { type = "login" } = Astro.props;
+
+const email = Astro.cookies.get("email")?.value ?? "";
+const remember_me = !!email;
+---
+
+<form type-form={type} class="p-12 bg-white mx-auto rounded-2xl w-100">
+	<div class="mb-4">
+		<h3 class="font-semibold text-2xl text-gray-800">
+			{type === "regiter" ? "Register" : "Login"}
+		</h3>
+		<p class="text-gray-500"></p>
+	</div>
+	<div class="space-y-5">
+		{
+			type === "regiter" && (
+				<div class="space-y-2">
+					<label class="text-sm font-medium text-gray-700 tracking-wide">
+						Nombre
+					</label>
+					<input
+						class="w-full text-base px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-400"
+						name="name"
+						placeholder="jhon doe"
+					/>
+				</div>
+			)
+		}
+		<div class="space-y-2">
+			<label class="text-sm font-medium text-gray-700 tracking-wide"
+				>Email</label
+			>
+			<input
+				type="email"
+				name="email"
+				value={email}
+				class="w-full text-base px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-400"
+				placeholder="mail@gmail.com"
+			/>
+		</div>
+		<div class="space-y-2">
+			<label class="mb-5 text-sm font-medium text-gray-700 tracking-wide">
+				Password
+			</label>
+			<input
+				type="password"
+				name="password"
+				class="w-full content-center text-base px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-green-400"
+				placeholder="Enter your password"
+			/>
+		</div>
+
+		<div class="flex items-center justify-between">
+			<div class="flex items-center">
+				<input
+					id="remember_me"
+					name="remember_me"
+					type="checkbox"
+					checked={remember_me}
+					class="h-4 w-4 bg-blue-500 focus:ring-blue-400 border-gray-300 rounded"
+				/>
+				<label for="remember_me" class="ml-2 block text-sm text-gray-800">
+					Remember me
+				</label>
+			</div>
+			<div class="text-sm">
+				<a
+					href={type === "regiter" ? "/login" : "/register"}
+					class="text-green-400 hover:text-green-500"
+				>
+					{type === "login" ? "No tienes cuenta ?" : "Ya tienes cuenta ?"}
+				</a>
+			</div>
+		</div>
+		<div>
+			<button
+				id="btn-submit"
+				type="submit"
+				class="w-full disabled:bg-gray-300 flex justify-center bg-green-400 hover:bg-green-500 text-gray-100 p-3 rounded-full tracking-wide font-semibold shadow-lg cursor-pointer transition ease-in duration-500"
+			>
+				{type === "regiter" ? "Register" : "Login"}
+			</button>
+			<div class="h-[2px] bg-gray-300 w-full my-2"></div>
+			<button
+				id="btn-google"
+				type="button"
+				class="w-full disabled:bg-gray-300 flex justify-center bg-rose-400 hover:bg-rose-500 text-gray-100 p-3 rounded-full tracking-wide font-semibold shadow-lg cursor-pointer transition ease-in duration-500"
+			>
+				Login con Google
+			</button>
+		</div>
+	</div>
+	<div class="pt-5 text-center text-gray-400 text-xs">
+		<span>
+			Copyright © 2021-{new Date().getFullYear()}. All rights reserved.
+			<a
+				href="https://codepen.io/uidesignhub"
+				rel=""
+				target="_blank"
+				title="Ajimon"
+				class="text-green hover:text-green-500">AJI</a
+			></span
+		>
+	</div>
+</form>
+
+<!-- //? login -->
+<script>
+	import { actions } from "astro:actions";
+
+	import Swal from "sweetalert2";
+
+	const form = document.querySelector("form") as HTMLFormElement;
+	const btn = document.querySelector("#btn-submit") as HTMLButtonElement;
+
+	const typeForm = form.getAttribute("type-form")!;
+
+	const actionAfterSubmit = async (error: any = null, data: any = null) => {
+		if (error) {
+			console.log(error.message);
+			Swal.fire({
+				title: "Error",
+				icon: "error",
+				text: error.message,
+			});
+			btn.disabled = false;
+			return;
+		}
+
+		console.log({ data });
+		Swal.fire({
+			title: "Exito",
+			icon: "success",
+			text: data,
+		});
+
+		btn.disabled = false;
+
+		window.location.replace("/protected");
+	};
+
+	form.addEventListener("submit", async (e) => {
+		e.preventDefault();
+		btn.disabled = true;
+
+		const formData = new FormData(form);
+
+		const data = undefined;
+
+		if (typeForm === "login") {
+			const { data, error } = await actions.login(formData);
+			actionAfterSubmit(error, data);
+		} else {
+			const { data, error } = await actions.registerUser(formData);
+			actionAfterSubmit(error, data);
+		}
+	});
+</script>
+
+<!-- //? Login con Google -->
+<script>
+	import { firebase } from "@/firebase/config";
+	import { actions } from "astro:actions";
+	import { GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import Swal from "sweetalert2";
+
+	const btnGoogle = document.querySelector("#btn-google") as HTMLButtonElement;
+
+	btnGoogle?.addEventListener("click", async () => {
+		try {
+			btnGoogle.disabled = true;
+
+			const provider = new GoogleAuthProvider();
+
+			// Obtener credenciales del lado del cliente
+			const credentials = await signInWithPopup(firebase.auth, provider);
+
+			// Verificar las credenciales en el backend;
+			const { error } = await actions.LoginWithGoogle(credentials);
+
+			if (error) {
+				console.log(error.message);
+				Swal.fire({
+					title: "Error",
+					icon: "error",
+					text: error.message,
+				});
+				btnGoogle.disabled = false;
+				return;
+			}
+
+      window.location.replace("/protected");
+
+
+		} catch (error) {
+
+      btnGoogle.disabled = false;
+      console.log(error);
+    }
+	});
+</script>
